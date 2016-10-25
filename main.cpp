@@ -9,7 +9,11 @@
 
 #define CUBE_SIZE 2.0f
 
-float _cameraAngle = 0.0f;
+//Variables for controlling camera
+float _cameraAngleX = 0.0f;
+float _cameraAngleY = 0.0f;
+bool _rotatingX = false;
+bool _rotatingY = false;
 
 //Forward declarations of methods.
 void init();
@@ -59,9 +63,18 @@ void render()
     glLoadIdentity();
 
 
-    //Camera
+    //Camera angle + zoom
+    if(_rotatingX)
+    {
+        _cameraAngleX += 0.5f;
+    }
+    if(_rotatingY)
+    {
+        _cameraAngleY += 0.5f;
+    }
     glTranslatef(0.0f, 0.0f, -20.0f);
-    glRotatef(-_cameraAngle, 0.0f, 1.0f, 0.0f);
+    glRotatef(_cameraAngleX, 1.0f, 0.0f, 0.0f);
+    glRotatef(_cameraAngleY, 0.0f, 1.0f, 0.0f);
     glPushMatrix();
 
     //Ambient Light
@@ -75,14 +88,14 @@ void render()
     //Front face
     glBegin(GL_QUADS);
         glColor3f(0.5f, 0.0f, 0.0f);
-        glNormal3f(0.0f, 0.0f, 1.0f);
+        glNormal3f(0.0f, 0.0f, -1.0f);
         glVertex3f(CUBE_SIZE, -CUBE_SIZE, -CUBE_SIZE);
         glVertex3f(-CUBE_SIZE, -CUBE_SIZE, -CUBE_SIZE);
         glVertex3f(-CUBE_SIZE, CUBE_SIZE, -CUBE_SIZE);
         glVertex3f(CUBE_SIZE, CUBE_SIZE, -CUBE_SIZE);
 
     //Back face
-        glNormal3f(0.0f, 0.0f, -1.0f);
+        glNormal3f(0.0f, 0.0f, 1.0f);
         glVertex3f(CUBE_SIZE, -CUBE_SIZE, CUBE_SIZE);
         glVertex3f(-CUBE_SIZE, -CUBE_SIZE, CUBE_SIZE);
         glVertex3f(-CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
@@ -137,24 +150,18 @@ void resize(int w, int h)
 
 void keyboard(unsigned char c, int x, int y)
 {
-    if(c == 27)
+    switch(c)
     {
-        exit(0);
-    }
-    if(c == 'x' || c == 'X')
-    {
-        _cameraAngle += 5.0f;
-        if(_cameraAngle >= 360.0)
-        {
-            _cameraAngle = 0;
-        }
-    }
-    if(c == 'z' || c == 'Z')
-    {
-        _cameraAngle -= 5.0f;
-        if(_cameraAngle <= 0.0)
-        {
-            _cameraAngle = 360.0;
-        }
+        case 27 :
+            exit(0);
+            break;
+
+        case 'X': case 'x' :
+            _rotatingX = !_rotatingX;
+            break;
+
+        case 'Y': case 'y' :
+            _rotatingY = !_rotatingY;
+
     }
 }
