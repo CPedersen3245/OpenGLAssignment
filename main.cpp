@@ -4,10 +4,26 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <string>
 #include <stdlib.h>
+#include <OpenGL/gl.h>
 #include <GLUT/glut.h>
 
-#define CUBE_SIZE 2.0f
+#define CUBE_SIZE 1.0f
+
+using namespace std;
+
+//Strings for instructions
+string instructions[10] = {"Z/z: Zoom in/out" ,
+                     "X/x: Rotation around x-axis start/stop",
+                     "Y/y: Rotation around y-axis start/stop",
+                     "A/a: Animation begin",
+                     "F/f: Make animation faster",
+                     "S/s: Make animation slower",
+                     "T/t: Pause animation",
+                     "C/c: Resume animation",
+                     "p: Flat shading",
+                     "P: Smooth shading"};
 
 //Variables for controlling camera
 float _cameraAngleX = 0.0f;
@@ -28,7 +44,7 @@ int main(int argc, char** argv)
     //Create Window
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-    glutInitWindowPosition(200, 200);
+    glutInitWindowPosition(300, 300);
     glutInitWindowSize(640, 480);
     glutCreateWindow("CG Assignment 2");
 
@@ -62,7 +78,6 @@ void render()
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-
     //Camera angle + zoom
     if(_rotatingX)
     {
@@ -72,18 +87,17 @@ void render()
     {
         _cameraAngleY += 0.5f;
     }
-    glTranslatef(0.0f, 0.0f, -20.0f);
+    glTranslatef(0.0f, 0.0f, -10.0f);
     glRotatef(_cameraAngleX, 1.0f, 0.0f, 0.0f);
     glRotatef(_cameraAngleY, 0.0f, 1.0f, 0.0f);
-    glPushMatrix();
-
+    glutPostRedisplay();
     //Ambient Light
     GLfloat ambientColour[] = {0.5f, 0.5f, 0.5f, 1.0f};
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColour);
 
+    glPushMatrix();
     //DRAWING CUBE
-    glRotatef(10.0f, 1.0f, 0.0f, 0.0f);
-    glutPostRedisplay();
+    glRotatef(30.0f, 1.0f, 0.0f, 0.0f);
 
     //Front face
     glBegin(GL_QUADS);
@@ -129,15 +143,39 @@ void render()
         glVertex3f(CUBE_SIZE, -CUBE_SIZE, -CUBE_SIZE);
         glVertex3f(CUBE_SIZE, -CUBE_SIZE, CUBE_SIZE);
     glEnd();
-
     glPopMatrix();
+
+    /*Text Rendering*/
+    renderText();
 
     glutSwapBuffers();
 }
 
 void renderText()
 {
+    glMatrixMode(GL_PROJECTION);
+    double *matrix = new double[16];
+    glGetDoublev(GL_PROJECTION_MATRIX, matrix);
+    glLoadIdentity();
+    glOrtho(0, 640, 0, 480, -5, 5);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glColor4f(0.0f, 0.0f, 1.0f, 1.0f);
 
+    for(int i = 0; i < 10; i++) //For each line
+    {
+        std::string line = instructions[i]; //Get line from string array
+        glRasterPos2f(10.0f, (460.0f - (float)i*15)); //Position of raster goes down each
+
+        for (int j = 0; j < line.length(); j++) //For each character
+        {
+            glutBitmapCharacter(GLUT_BITMAP_9_BY_15, (int)line[j]); //Give 'em hell, GLUT!
+        }
+    }
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glLoadMatrixd(matrix);
+    glMatrixMode(GL_MODELVIEW);
 }
 
 void resize(int w, int h)
