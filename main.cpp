@@ -12,8 +12,7 @@
 #include <GLUT/glut.h>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
-#include "glm/ext.hpp"
-
+#include "imageloader.h"
 
 #define CUBE_SIZE 2.0
 #define GROUND_SIZE 40.0
@@ -33,14 +32,30 @@ string instructions[10] = {"Z/z: Zoom in/out" , //Done
                            "P: Smooth shading"}; //Done
 
 //Variables for controlling camera
-float _cameraAngleX = 0.0f;
+float _cameraAngleX = 15.0f;
 float _cameraAngleY = 0.0f;
-float _zoom = 0.0f;
+float _zoom = 0.5f;
 bool _rotatingX = false;
 bool _rotatingY = false;
 
 //Variables for controlling shading
 bool _smooth = false;
+
+//Texture IDs
+GLuint _textureID[6];
+
+//Object vertices
+vector< glm::vec3 > barrelVertices;
+vector< glm::vec2 > barrelUvs;
+vector< glm::vec3 > barrelNormals;
+
+vector< glm::vec3 > fishVertices;
+vector< glm::vec2 > fishUvs;
+vector< glm::vec3 > fishNormals;
+
+vector< glm::vec3 > chairVertices;
+vector< glm::vec2 > chairUvs;
+vector< glm::vec3 > chairNormals;
 
 //Forward declarations of methods.
 void init();
@@ -54,6 +69,17 @@ bool loadOBJ(
         vector < glm::vec2 > &out_uvs,
         vector < glm::vec3 > &out_normals
 );
+GLuint loadTexture(Image* image);
+
+void renderSetup();
+
+void renderGround();
+void renderBarrel();
+void renderRustyBarrel();
+void renderFish();
+void renderChair();
+void renderRock(float x, float y, float z);
+
 void renderText();
 
 //Main to initialize variables, and start GLUT's main loop
@@ -88,7 +114,25 @@ void init()
     glEnable(GL_LIGHT0);
     glEnable(GL_CULL_FACE);
 
-    glFrustum(-1.0, 1.0, -1.0, 1.0, 0.0, 40.0);
+    glFrustum(-1.0, 1.0, -1.0, 1.0, -4.0, 40.0);
+
+    //Loading textures
+    Image* image = loadBMP("textures/barrel.bmp");
+    _textureID[0] = loadTexture(image);
+    image = loadBMP("textures/sand.bmp");
+    _textureID[1] = loadTexture(image);
+    image = loadBMP("textures/fish.bmp");
+    _textureID[2] = loadTexture(image);
+    image = loadBMP("textures/chair.bmp");
+    _textureID[3] = loadTexture(image);
+    image = loadBMP("textures/rock.bmp");
+    _textureID[4] = loadTexture(image);
+    delete image;
+
+    //Load objects
+    loadOBJ("objects/barrel.obj", barrelVertices, barrelUvs, barrelNormals);
+    loadOBJ("objects/fish.obj", fishVertices, fishUvs, fishNormals);
+    loadOBJ("objects/chair.obj", chairVertices, chairUvs, chairNormals);
 }
 
 void render()
@@ -96,7 +140,30 @@ void render()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+    glPushMatrix();
 
+    //Set camera, zoom, lighting etc.
+    renderSetup();
+
+    //Render objects
+    renderGround();
+    renderBarrel();
+    renderRustyBarrel();
+    renderFish();
+    renderChair();
+    renderRock(-4.0, 0.0, 4.0);
+    renderRock(-3.5, 0.0, 4.1);
+
+    glPopMatrix();
+
+    /*Text Rendering*/
+    renderText();
+
+    glutSwapBuffers();
+}
+
+void renderSetup()
+{
     //Camera angle + zoom
     if(_rotatingX)
     {
@@ -106,7 +173,7 @@ void render()
     {
         _cameraAngleY += 0.5f;
     }
-    glScalef(1+_zoom, 1+_zoom, 1.0f);
+    glScalef(+_zoom, +_zoom, 1.0f);
 
     //Shading
     if(_smooth)
@@ -124,61 +191,191 @@ void render()
     glutPostRedisplay();
 
     //Ambient Light
-    GLfloat ambientColour[] = {0.5f, 0.5f, 0.5f, 1.0f};
+    GLfloat ambientColour[] = {0.0f, 0.0f, 0.3f, 1.0f};
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColour);
+}
 
-    glPushMatrix();
+void renderGround()
+{
 
-    glColor3f(0.62f, 0.53f, 0.32f);
+    //Texture
+    glColor4f(1,1,1,1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, _textureID[1]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    //Ocean Floor Rendering
+    //Draw
     glBegin(GL_QUADS);
-        glNormal3f(0.0f, 1.0f, 0.0f);
-        glVertex3f(GROUND_SIZE, -1.0f, GROUND_SIZE);
-        glVertex3f(GROUND_SIZE, -1.0f, -GROUND_SIZE);
-        glVertex3f(-GROUND_SIZE, -1.0f, -GROUND_SIZE);
-        glVertex3f(-GROUND_SIZE, -1.0f, GROUND_SIZE);
+    glNormal3f(0.0f, 1.0f, 0.0f);
+    glTexCoord2f(10.0f, 10.0f);
+    glVertex3f(GROUND_SIZE, -1.0f, GROUND_SIZE);
+    glTexCoord2f(10.0f, 0.0f);
+    glVertex3f(GROUND_SIZE, -1.0f, -GROUND_SIZE);
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex3f(-GROUND_SIZE, -1.0f, -GROUND_SIZE);
+    glTexCoord2f(0.0f, 10.0f);
+    glVertex3f(-GROUND_SIZE, -1.0f, GROUND_SIZE);
     glEnd();
 
-    //Load object
-    vector< glm::vec3 > vertices;
-    vector< glm::vec2 > uvs;
-    vector< glm::vec3 > normals;
-    bool res = loadOBJ("objects/cube.obj", vertices, uvs, normals);
+    glDisable(GL_TEXTURE_2D);
+}
 
-    glColor3f(0.13f, 0.24f, 0.19f);
+void renderBarrel()
+{
     glPushMatrix();
-    glBegin(GL_TRIANGLES);
-        for(int i=0; i<vertices.size(); i += 3)
-        {
-            glNormal3f(normals.at(i).x, normals.at(i).y, normals.at(i).z);
-            glTexCoord2f(uvs.at(i).x, uvs.at(i).y);
-            glVertex3f(vertices.at(i).x, vertices.at(i).y, vertices.at(i).z);
-            glTexCoord2f(uvs.at(i+1).x, uvs.at(i+1).y);
-            glVertex3f(vertices.at(i+1).x, vertices.at(i+1).y, vertices.at(i+1).z);
-            glTexCoord2f(uvs.at(i+2).x, uvs.at(i+2).y);
-            glVertex3f(vertices.at(i+2).x, vertices.at(i+2).y, vertices.at(i+2).z);
-        }
-    glEnd();
-    glPopMatrix();
 
-    /*
-    //SPHERE
+    //Transform
+    glTranslatef(-1.0f, -1.5f, 0.0f);
+    glRotatef(-25.0f, 0.0f, 1.0f, 0.0f);
+    glRotatef(-25.0f, 1.0f, 0.0f, 0.0f);
+
+    //Texture
+    glColor4f(1,1,1,1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, _textureID[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    //Draw
+    glBegin(GL_TRIANGLES);
+    for(int i=0; i<barrelVertices.size(); i += 3)
+    {
+        glNormal3f(barrelNormals.at(i).x, barrelNormals.at(i).y, barrelNormals.at(i).z);
+        glTexCoord2f(barrelUvs.at(i).x, barrelUvs.at(i).y);
+        glVertex3f(barrelVertices.at(i).x, barrelVertices.at(i).y, barrelVertices.at(i).z);
+        glTexCoord2f(barrelUvs.at(i+1).x, barrelUvs.at(i+1).y);
+        glVertex3f(barrelVertices.at(i+1).x, barrelVertices.at(i+1).y, barrelVertices.at(i+1).z);
+        glTexCoord2f(barrelUvs.at(i+2).x, barrelUvs.at(i+2).y);
+        glVertex3f(barrelVertices.at(i+2).x, barrelVertices.at(i+2).y, barrelVertices.at(i+2).z);
+    }
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+    glPopMatrix();
+}
+
+void renderRustyBarrel()
+{
+    glPushMatrix();
+
+    //Colour
+    glColor4f(0.2f, 0.2f, 0.2f, 1.0f);
+
+    //Transform
+    glTranslatef(3.0f, -1.5f, -1.0f);
+    glRotatef(-25.0f, 0.0f, 1.0f, 0.0f);
+    glRotatef(-75.0f, 1.0f, 0.0f, 0.0f);
+
+    //Draw
+    float radius = 1.0f;
+    float height = 2.5f;
+    float slices = 12.0f;
+
+    GLUquadricObj* quadratic = gluNewQuadric();
+    gluQuadricNormals(quadratic, GLU_SMOOTH);
+    gluQuadricDrawStyle(quadratic, GLU_FILL);
+    gluQuadricTexture(quadratic, GL_TRUE);
+
+    gluCylinder(quadratic, radius, radius, height, slices , slices);
+    glRotatef(180, 1,0,0);
+    gluDisk(quadratic, 0.0f, radius, slices, 1);
+    glRotatef(180, 1,0,0);
+    glTranslatef(0.0f, 0.0f, height);
+    gluDisk(quadratic, 0.0f, radius, slices, 1);
+    glTranslatef(0.0f, 0.0f, height);
+
+    glDisable(GL_TEXTURE_2D);
+    glPopMatrix();
+}
+
+void renderFish()
+{
+    glPushMatrix();
+
+    //Transform
+    glTranslatef(2.0f, 0.5f, 0.0f);
+
+    //Texture
+    glColor4f(1,1,1,1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, _textureID[2]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    //Draw
+    glBegin(GL_TRIANGLES);
+    for(int i=0; i<fishVertices.size(); i += 3)
+    {
+        glNormal3f(fishNormals.at(i).x, fishNormals.at(i).y, fishNormals.at(i).z);
+        glTexCoord2f(fishUvs.at(i).x, fishUvs.at(i).y);
+        glVertex3f(fishVertices.at(i).x, fishVertices.at(i).y, fishVertices.at(i).z);
+        glTexCoord2f(fishUvs.at(i+1).x, fishUvs.at(i+1).y);
+        glVertex3f(fishVertices.at(i+1).x, fishVertices.at(i+1).y, fishVertices.at(i+1).z);
+        glTexCoord2f(fishUvs.at(i+2).x, fishUvs.at(i+2).y);
+        glVertex3f(fishVertices.at(i+2).x, fishVertices.at(i+2).y, fishVertices.at(i+2).z);
+    }
+    glEnd();
+    //glDisable(GL_TEXTURE_2D);
+    glPopMatrix();
+}
+
+void renderChair()
+{
+    glPushMatrix();
+
+    //Transform
+    glTranslatef(2.5f, -1.2f, 6.0f);
+    glRotatef(-40.0f, 0.0f, 1.0f, 0.0f);
+    glRotatef(20.0f, 1.0f, 0.0f, 0.0f);
+
+    //Texture
+    glColor4f(1,1,1,1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, _textureID[3]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    //Draw
+    glBegin(GL_TRIANGLES);
+    for(int i=0; i<chairVertices.size(); i += 3)
+    {
+        glNormal3f(chairNormals.at(i).x, chairNormals.at(i).y, chairNormals.at(i).z);
+        glTexCoord2f(chairUvs.at(i).x, chairUvs.at(i).y);
+        glVertex3f(chairVertices.at(i).x, chairVertices.at(i).y, chairVertices.at(i).z);
+        glTexCoord2f(chairUvs.at(i+1).x, chairUvs.at(i+1).y);
+        glVertex3f(chairVertices.at(i+1).x, chairVertices.at(i+1).y, chairVertices.at(i+1).z);
+        glTexCoord2f(chairUvs.at(i+2).x, chairUvs.at(i+2).y);
+        glVertex3f(chairVertices.at(i+2).x, chairVertices.at(i+2).y, chairVertices.at(i+2).z);
+    }
+    glEnd();
+    //glDisable(GL_TEXTURE_2D);
+    glPopMatrix();
+}
+
+void renderRock(float x, float y, float z)
+{
+    glPushMatrix();
+
+    //Texture
+    glColor4f(1,1,1,1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, _textureID[4]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    //Transform
+    glTranslatef(x, y-1.2, z);
+
+    //ANOTHER ONE
     GLUquadricObj* quadratic = gluNewQuadric();
     gluQuadricNormals(quadratic, GLU_SMOOTH);
     gluQuadricDrawStyle( quadratic, GLU_FILL);
     gluQuadricTexture(quadratic, GL_TRUE);
 
-    glTranslatef(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
-    gluSphere(quadratic, 0.5f, 10, 10);
-    */
+    gluSphere(quadratic, 0.5f, 8, 8);
 
+    glDisable(GL_TEXTURE_2D);
     glPopMatrix();
-
-    /*Text Rendering*/
-    renderText();
-
-    glutSwapBuffers();
 }
 
 bool loadOBJ(
@@ -269,6 +466,22 @@ bool loadOBJ(
     return true;
 }
 
+GLuint loadTexture(Image* image)
+{
+    GLuint textureId;
+    glGenTextures(1, &textureId);
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,
+                 GL_RGB,
+                 image->width, image->height,
+                 0,
+                 GL_RGB,
+                 GL_UNSIGNED_BYTE,
+                 image->pixels);
+                return textureId;
+}
+
 void renderText()
 {
     glMatrixMode(GL_PROJECTION);
@@ -278,11 +491,10 @@ void renderText()
     glOrtho(0, 640, 0, 480, -5, 5);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glColor4f(0.0f, 0.0f, 1.0f, 1.0f);
 
     for(int i = 0; i < 10; i++) //For each line
     {
-        std::string line = instructions[i]; //Get line from string array
+        string line = instructions[i]; //Get line from string array
         glRasterPos2f(10.0f, (460.0f - (float)i*15)); //Position of raster goes down each
 
         for (int j = 0; j < line.length(); j++) //For each character
@@ -333,7 +545,7 @@ void keyboard(unsigned char c, int x, int y)
             break;
 
         case 'z':
-            if(_zoom>-0.9)
+            if(_zoom>0.2)
             {
                 _zoom -= 0.1f;
             }
