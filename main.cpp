@@ -3,17 +3,16 @@
 // "Under the Sea", CG200 OpenGL Assignment
 //
 
-#include <string>
+#include <string.h>
 #include <vector>
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-#include <GLUT/glut.h>
-#include <glm/vec2.hpp>
-#include <glm/vec3.hpp>
+#include <GL/glu.h>
+#include <GL/glut.h>
+#include "glm/vec2.hpp"
+#include "glm/vec3.hpp"
 #include "imageloader.h"
 
 #define GROUND_SIZE 40.0
@@ -577,7 +576,7 @@ void renderText()
     {
         string line = instructions[i]; //Get line from string array
         glRasterPos2f(10.0f, (460.0f - (float)i*15)); //Position of raster goes down each
-        glColor3f(1.0, 1.0, 1.0);
+        glColor3f(1.0f, 1.0f, 1.0f);
 
         for (int j = 0; j < line.length(); j++) //For each character
         {

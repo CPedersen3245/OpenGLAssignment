@@ -1,10 +1,14 @@
 CC = g++
-CFLAGS = -Wall -g
+CFLAGS = -Wall -lglut -lGL -lGLU -g
 PROG = CGAssignment
 
 SRCS = main.cpp imageloader.cpp
-LIBS = -framework OpenGL -framework GLUT
 
+ifeq ($(shell uname),Darwin)
+	LIBS = -framework OpenGL -framework GLUT
+else
+	LIBS = -lglut
+endif
 
 all: $(PROG)
 
