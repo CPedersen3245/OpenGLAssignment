@@ -1,11 +1,13 @@
 //
 // Created by Campbell Pedersen on 24/10/16.
+// "Under the Sea", CG200 OpenGL Assignment
 //
 
 #include <string>
 #include <vector>
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
 #include <iostream>
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
@@ -14,7 +16,6 @@
 #include <glm/vec3.hpp>
 #include "imageloader.h"
 
-#define CUBE_SIZE 2.0
 #define GROUND_SIZE 40.0
 
 using namespace std;
@@ -42,7 +43,8 @@ bool _rotatingY = false;
 bool _startedAnimating = false;
 bool _animating = false;
 float _angle = 0.0;
-int _speed = 60;
+float _bubbleheight = 0.0;
+int _speed = 25;
 
 //Variables for controlling shading
 bool _smooth = false;
@@ -63,12 +65,13 @@ vector< glm::vec3 > chairVertices;
 vector< glm::vec2 > chairUvs;
 vector< glm::vec3 > chairNormals;
 
-//Forward declarations of methods.
+//OpenGL Method Callbacks
 void init();
 void render();
 void resize(int w, int h);
 void keyboard(unsigned char c, int x, int y);
 
+//Methods from loading textures/objects from file
 bool loadOBJ(
         const char * path,
         vector < glm::vec3 > &out_vertices,
@@ -77,17 +80,22 @@ bool loadOBJ(
 );
 GLuint loadTexture(Image* image);
 
+//Initializes gl constants/camera before rendering
 void renderSetup();
 
+//Object rendering methods
 void renderGround();
 void renderBarrel();
 void renderRustyBarrel();
 void renderFish(float x, float y, float z);
 void renderChair();
 void renderRock(float x, float y, float z);
+void renderBubble(float x, float y, float z);
 
+//Update method; for animation
 void update(int value);
 
+//Renders instructions on screen
 void renderText();
 
 //Main to initialize variables, and start GLUT's main loop
@@ -112,10 +120,12 @@ int main(int argc, char** argv)
     return 0;
 }
 
+//Initializes GL constants
 void init()
 {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_COLOR_MATERIAL);
+    glEnable(GL_BLEND);
     glClearColor(0.0f, 0.1f, 0.2f, 1.0f);
 
     glEnable(GL_LIGHTING);
@@ -146,6 +156,7 @@ void init()
     glutTimerFunc(_speed, update, 0);
 }
 
+//Main scene rendering function
 void render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -160,12 +171,13 @@ void render()
     renderGround();
     renderBarrel();
     renderRustyBarrel();
-    renderChair();
+    //renderChair();
     renderRock(-4.0f, 0.0f, 4.0f);
     renderRock(-3.5f, 0.0f, 4.1f);
     renderFish(0.0f, 0.0f, 0.0f);
     renderFish(1.0f, 0.2f, 2.0f);
     renderFish(-2.0f, -0.2f, 1.0f);
+    renderBubble(-2.5f, -0.5f, -3.0f);
 
     glPopMatrix();
 
@@ -174,6 +186,7 @@ void render()
     glutSwapBuffers();
 }
 
+//Sets up camera, constants each frame
 void renderSetup()
 {
     //Camera angle + zoom
@@ -205,6 +218,7 @@ void renderSetup()
     GLfloat ambientColour[] = {0.0f, 0.0f, 0.3f, 1.0f};
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColour);
 
+    //Directional Light
     GLfloat lightColour1[] = {1.0f, 0.0f, 0.0f, 1.0f};
     GLfloat lightPos1[] = {0.0f, 2.0f, 0.0f, 1.0f};
     GLfloat lightDirection1[] = {0.0f, -1.0f, 0.0f, 1.0f};
@@ -213,6 +227,7 @@ void renderSetup()
     glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, lightDirection1);
 }
 
+//Ground rendering
 void renderGround()
 {
 
@@ -239,6 +254,7 @@ void renderGround()
     glDisable(GL_TEXTURE_2D);
 }
 
+//Wooden barrel rendering
 void renderBarrel()
 {
     glPushMatrix();
@@ -272,6 +288,7 @@ void renderBarrel()
     glPopMatrix();
 }
 
+//Rusty barrel rendering
 void renderRustyBarrel()
 {
     glPushMatrix();
@@ -306,6 +323,7 @@ void renderRustyBarrel()
     glPopMatrix();
 }
 
+//Fish rendering, renders at input argument co-ordinates
 void renderFish(float x, float y, float z)
 {
     glPushMatrix();
@@ -338,11 +356,13 @@ void renderFish(float x, float y, float z)
     glPopMatrix();
 }
 
+//Fish + bubble animation variables updating
 void update(int value)
 {
     if(_animating)
     {
         _angle += 2.0f;
+        _bubbleheight = sin(_angle/15);
         if (_angle > 360)
         {
             _angle -= 360;
@@ -352,6 +372,7 @@ void update(int value)
     glutTimerFunc(_speed, update, 0);
 }
 
+//Chair rendering
 void renderChair()
 {
     glPushMatrix();
@@ -385,6 +406,7 @@ void renderChair()
     glPopMatrix();
 }
 
+//Rock rendering, renders at input argument co-ordinates
 void renderRock(float x, float y, float z)
 {
     glPushMatrix();
@@ -411,6 +433,30 @@ void renderRock(float x, float y, float z)
     glPopMatrix();
 }
 
+//Bubble rendering, renders at input argument co-ordinates
+void renderBubble(float x, float y, float z)
+{
+    glPushMatrix();
+
+    //Transparency
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(0.2f, 0.2f, 0.2f, 0.4f);
+
+    //Transform
+    glTranslatef(x, y+2.0 + _bubbleheight, z);
+
+    //ANOTHER ONE
+    GLUquadricObj* quadratic = gluNewQuadric();
+    gluQuadricNormals(quadratic, GLU_SMOOTH);
+    gluQuadricDrawStyle( quadratic, GLU_FILL);
+    gluQuadricTexture(quadratic, GL_TRUE);
+    gluSphere(quadratic, 0.5f, 8+(_zoom*10), 8+(_zoom*10));
+
+    glPopMatrix();
+}
+
+//Loads object from .obj file (Faces must be triangulated
 bool loadOBJ(
         const char* path,
         vector < glm::vec3 > &out_vertices,
@@ -499,6 +545,7 @@ bool loadOBJ(
     return true;
 }
 
+//Loads texture from .bmp file
 GLuint loadTexture(Image* image)
 {
     GLuint textureId;
@@ -515,6 +562,7 @@ GLuint loadTexture(Image* image)
                 return textureId;
 }
 
+//Renders text on screen
 void renderText()
 {
     glMatrixMode(GL_PROJECTION);
@@ -541,6 +589,7 @@ void renderText()
     glMatrixMode(GL_MODELVIEW);
 }
 
+//Handles window resizing
 void resize(int w, int h)
 {
     glViewport(0, 0, w, h);
@@ -549,6 +598,7 @@ void resize(int w, int h)
     gluPerspective(45.0, (double)w/(double)h, 1.0, 200.0);
 }
 
+//Handles keyboard input
 void keyboard(unsigned char c, int x, int y)
 {
     switch(c)
@@ -590,9 +640,9 @@ void keyboard(unsigned char c, int x, int y)
             break;
 
         case 'F': case 'f':
-            if(_speed > 20)
+            if(_speed > 5)
             {
-                _speed -= 10;
+                _speed -= 5;
             }
             break;
 
