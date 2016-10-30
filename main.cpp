@@ -23,7 +23,7 @@ using namespace std;
 string instructions[10] = {"Z/z: Zoom in/out" , //Done
                            "X/x: Rotation around x-axis start/stop", //Done
                            "Y/y: Rotation around y-axis start/stop", //Done
-                           "A/a: Animation begin",
+                           "A/a: Animation begin", //Done
                            "F/f: Make animation faster",
                            "S/s: Make animation slower",
                            "T/t: Pause animation",
@@ -37,6 +37,12 @@ float _cameraAngleY = 0.0f;
 float _zoom = 0.5f;
 bool _rotatingX = false;
 bool _rotatingY = false;
+
+//Variables for controlling animation
+bool _startedAnimating = false;
+bool _animating = false;
+float _angle = 0.0;
+int _speed = 60;
 
 //Variables for controlling shading
 bool _smooth = false;
@@ -76,9 +82,11 @@ void renderSetup();
 void renderGround();
 void renderBarrel();
 void renderRustyBarrel();
-void renderFish();
+void renderFish(float x, float y, float z);
 void renderChair();
 void renderRock(float x, float y, float z);
+
+void update(int value);
 
 void renderText();
 
@@ -108,10 +116,11 @@ void init()
 {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_COLOR_MATERIAL);
-    glClearColor(0.2f, 0.2f, 0.8f, 1.0f);
+    glClearColor(0.0f, 0.1f, 0.2f, 1.0f);
 
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
+    glEnable(GL_LIGHT1);
     glEnable(GL_CULL_FACE);
 
     glFrustum(-1.0, 1.0, -1.0, 1.0, -4.0, 40.0);
@@ -133,6 +142,8 @@ void init()
     loadOBJ("objects/barrel.obj", barrelVertices, barrelUvs, barrelNormals);
     loadOBJ("objects/fish.obj", fishVertices, fishUvs, fishNormals);
     loadOBJ("objects/chair.obj", chairVertices, chairUvs, chairNormals);
+
+    glutTimerFunc(_speed, update, 0);
 }
 
 void render()
@@ -149,16 +160,17 @@ void render()
     renderGround();
     renderBarrel();
     renderRustyBarrel();
-    renderFish();
     renderChair();
-    renderRock(-4.0, 0.0, 4.0);
-    renderRock(-3.5, 0.0, 4.1);
+    renderRock(-4.0f, 0.0f, 4.0f);
+    renderRock(-3.5f, 0.0f, 4.1f);
+    renderFish(0.0f, 0.0f, 0.0f);
+    renderFish(1.0f, 0.2f, 2.0f);
+    renderFish(-2.0f, -0.2f, 1.0f);
 
     glPopMatrix();
 
     /*Text Rendering*/
     renderText();
-
     glutSwapBuffers();
 }
 
@@ -187,12 +199,18 @@ void renderSetup()
 
     glTranslatef(0.0f, 0.0f, -10.0f);
     glRotatef(_cameraAngleX, 1.0f, 0.0f, 0.0f);
-    glRotatef(_cameraAngleY, 0.0f, 1.0f, 0.0f);
-    glutPostRedisplay();
+    glRotatef(-_cameraAngleY, 0.0f, 1.0f, 0.0f);
 
     //Ambient Light
     GLfloat ambientColour[] = {0.0f, 0.0f, 0.3f, 1.0f};
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientColour);
+
+    GLfloat lightColour1[] = {1.0f, 0.0f, 0.0f, 1.0f};
+    GLfloat lightPos1[] = {0.0f, 2.0f, 0.0f, 1.0f};
+    GLfloat lightDirection1[] = {0.0f, -1.0f, 0.0f, 1.0f};
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, lightColour1);
+    glLightfv(GL_LIGHT1, GL_POSITION, lightPos1);
+    glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, lightDirection1);
 }
 
 void renderGround()
@@ -276,24 +294,25 @@ void renderRustyBarrel()
     gluQuadricDrawStyle(quadratic, GLU_FILL);
     gluQuadricTexture(quadratic, GL_TRUE);
 
-    gluCylinder(quadratic, radius, radius, height, slices , slices);
+    gluCylinder(quadratic, radius, radius, height, slices+(_zoom*10) , slices+(_zoom*10));
     glRotatef(180, 1,0,0);
-    gluDisk(quadratic, 0.0f, radius, slices, 1);
+    gluDisk(quadratic, 0.0f, radius, slices+(_zoom*10), 1);
     glRotatef(180, 1,0,0);
     glTranslatef(0.0f, 0.0f, height);
-    gluDisk(quadratic, 0.0f, radius, slices, 1);
+    gluDisk(quadratic, 0.0f, radius, slices+(_zoom*10), 1);
     glTranslatef(0.0f, 0.0f, height);
 
     glDisable(GL_TEXTURE_2D);
     glPopMatrix();
 }
 
-void renderFish()
+void renderFish(float x, float y, float z)
 {
     glPushMatrix();
 
     //Transform
-    glTranslatef(2.0f, 0.5f, 0.0f);
+    glTranslatef(x, y, z);
+    glRotatef(-_angle, 0.0f, 1.0f, 0.0f);
 
     //Texture
     glColor4f(1,1,1,1);
@@ -317,6 +336,20 @@ void renderFish()
     glEnd();
     //glDisable(GL_TEXTURE_2D);
     glPopMatrix();
+}
+
+void update(int value)
+{
+    if(_animating)
+    {
+        _angle += 2.0f;
+        if (_angle > 360)
+        {
+            _angle -= 360;
+        }
+    }
+    glutPostRedisplay();
+    glutTimerFunc(_speed, update, 0);
 }
 
 void renderChair()
@@ -372,7 +405,7 @@ void renderRock(float x, float y, float z)
     gluQuadricDrawStyle( quadratic, GLU_FILL);
     gluQuadricTexture(quadratic, GL_TRUE);
 
-    gluSphere(quadratic, 0.5f, 8, 8);
+    gluSphere(quadratic, 0.5f, 8+(_zoom*10), 8+(_zoom*10));
 
     glDisable(GL_TEXTURE_2D);
     glPopMatrix();
@@ -548,6 +581,35 @@ void keyboard(unsigned char c, int x, int y)
             if(_zoom>0.2)
             {
                 _zoom -= 0.1f;
+            }
+            break;
+
+        case 'A': case 'a':
+            _startedAnimating = true;
+            _animating = true;
+            break;
+
+        case 'F': case 'f':
+            if(_speed > 20)
+            {
+                _speed -= 10;
+            }
+            break;
+
+        case 'S': case 's':
+        {
+            _speed += 10;
+            break;
+        }
+
+        case 'T': case 't':
+            _animating = false;
+            break;
+
+        case 'C': case 'c':
+            if(_startedAnimating)
+            {
+                _animating = true;
             }
             break;
     }
