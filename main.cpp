@@ -126,7 +126,7 @@ void init()
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_COLOR_MATERIAL);
     glEnable(GL_BLEND);
-    glClearColor(0.0f, 0.1f, 0.2f, 1.0f);
+    glClearColor(0.0f, 0.1f, 0.3f, 1.0f);
 
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
@@ -171,7 +171,7 @@ void render()
     renderGround();
     renderBarrel();
     renderRustyBarrel();
-    //renderChair();
+    renderChair();
     renderRock(-4.0f, 0.0f, 4.0f);
     renderRock(-3.5f, 0.0f, 4.1f);
     renderFish(0.0f, 0.0f, 0.0f);
@@ -577,6 +577,7 @@ void renderText()
     {
         string line = instructions[i]; //Get line from string array
         glRasterPos2f(10.0f, (460.0f - (float)i*15)); //Position of raster goes down each
+        glColor3f(1.0, 1.0, 1.0);
 
         for (int j = 0; j < line.length(); j++) //For each character
         {
